@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Speech to Text Converter</title>
+    
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin-top: 50px;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        #result {
+            height: 200px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-shadow: 0 0 10px 0 #bbb;
+            margin-bottom: 20px;
+            font-size: 16px;
+            line-height: 25px;
+            overflow-y: auto;
+            background: #fff;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container text-center">
+        <h3 class="mb-4">Speech to Text Converter</h3>
+        
+        <div id="result"></div>
+
+        <div class="row">
+            <div class="col-12 col-md-4 mb-2">
+                <button id="startButton" class="btn btn-success" onclick="startConverting();">
+                    <i class="fa fa-microphone"></i> Start
+                </button>
+            </div>
+            <div class="col-12 col-md-4 mb-2">
+                <button id="stopButton" class="btn btn-danger" onclick="stopConverting();">
+                    <i class="fa fa-stop"></i> Stop
+                </button>
+            </div>
+            <div class="col-12 col-md-4">
+                <button id="clearButton" class="btn btn-secondary" onclick="ClearConverting();">
+                    <i class="fa fa-trash"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var result = document.getElementById('result');
+        var speechRecognizer;
+        var finalTranscripts = '';
+        var interimTranscripts = '';
+        var isConverting = false;
+
+        function startConverting() {
+            if ('webkitSpeechRecognition' in window && !isConverting) {
+                speechRecognizer = new webkitSpeechRecognition();
+                speechRecognizer.continuous = true;
+                speechRecognizer.interimResults = true;
+                speechRecognizer.lang = 'en-US';
+                speechRecognizer.start();
+
+                isConverting = true;
+
+                speechRecognizer.onresult = function (event) {
+                    interimTranscripts = '';
+                    for (var i = event.resultIndex; i < event.results.length; i++) {
+                        var transcript = event.results[i][0].transcript;
+                        transcript = transcript.replace(/\n/g, "<br>");
+                        if (event.results[i].isFinal) {
+                            finalTranscripts += transcript;
+                        } else {
+                            interimTranscripts += transcript;
+                        }
+                    }
+                    result.innerHTML = finalTranscripts + '<span style="color: #999">' + interimTranscripts + '</span>';
+                };
+
+                speechRecognizer.onerror = function (event) {
+                    console.error("Speech Recognition Error:", event.error);
+                };
+            } else if (isConverting) {
+                alert("Speech recognition is already active. Please press stop first.");
+            } else {
+                result.innerHTML = 'Your browser is not supported. Please use Google Chrome!';
+            }
+        }
+
+        function stopConverting() {
+            if (speechRecognizer && isConverting) {
+                speechRecognizer.stop();
+                isConverting = false;
+             // Send a stop signal or final data to Power Automate (optional)
+             var url = "https://prod-112.westus.logic.azure.com:443/workflows/02c5df23094d45789ed60c17745fe568/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=rokUEeYsobHCpi1dg_wdBcqcJWrBMVFwcQbDT_BQYOM";
+                var req = new XMLHttpRequest();
+                req.open("POST", url, true);
+                req.setRequestHeader('Content-Type', 'application/json');
+                req.send(JSON.stringify({ "text": finalTranscripts + interimTranscripts })); // send stop signal and final transcript.
+                finalTranscripts = '';
+                interimTranscripts = '';
+                result.innerHTML = '';
+            }
+        }
+
+        function ClearConverting() {
+            finalTranscripts = '';
+            interimTranscripts = '';
+            result.innerHTML = '';
+        }
+    </script>
+
+    <!-- Bootstrap JS (Optional) -->
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"></script>
+
+</body>
+</html>
